@@ -1,0 +1,92 @@
+{
+  "architecture": "small_cnn",
+  "test_accuracy": 0.957,
+  "macro_f1": 0.956,
+  "class_names": [
+    "AnnualCrop",
+    "Forest",
+    "HerbaceousVegetation",
+    "Highway",
+    "Industrial",
+    "Pasture",
+    "PermanentCrop",
+    "Residential",
+    "River",
+    "SeaLake"
+  ],
+  "classification_report": {
+    "AnnualCrop": {
+      "precision": 0.9259259259259259,
+      "recall": 0.9507829977628636,
+      "f1-score": 0.9381898454746137,
+      "support": 447.0
+    },
+    "Forest": {
+      "precision": 0.9907192575406032,
+      "recall": 0.977116704805492,
+      "f1-score": 0.9838709677419355,
+      "support": 437.0
+    },
+    "HerbaceousVegetation": {
+      "precision": 0.9428571428571428,
+      "recall": 0.9225806451612903,
+      "f1-score": 0.9326086956521739,
+      "support": 465.0
+    },
+    "Highway": {
+      "precision": 0.9276139410187667,
+      "recall": 0.9664804469273743,
+      "f1-score": 0.9466484268125855,
+      "support": 358.0
+    },
+    "Industrial": {
+      "precision": 0.9728997289972899,
+      "recall": 0.967654986522911,
+      "f1-score": 0.9702702702702702,
+      "support": 371.0
+    },
+    "Pasture": {
+      "precision": 0.9335347432024169,
+      "recall": 0.9686520376175548,
+      "f1-score": 0.9507692307692308,
+      "support": 319.0
+    },
+    "PermanentCrop": {
+      "precision": 0.9426934097421203,
+      "recall": 0.8989071038251366,
+      "f1-score": 0.9202797202797203,
+      "support": 366.0
+    },
+    "Residential": {
+      "precision": 0.9853249475890985,
+      "recall": 0.9832635983263598,
+      "f1-score": 0.9842931937172775,
+      "support": 478.0
+    },
+    "River": {
+      "precision": 0.9554317548746518,
+      "recall": 0.9371584699453552,
+      "f1-score": 0.9462068965517242,
+      "support": 366.0
+    },
+    "SeaLake": {
+      "precision": 0.9821029082774049,
+      "recall": 0.9909706546275395,
+      "f1-score": 0.9865168539325843,
+      "support": 443.0
+    },
+    "accuracy": 0.957037037037037,
+    "macro avg": {
+      "precision": 0.955910376002542,
+      "recall": 0.9563567645521877,
+      "f1-score": 0.9559654101202117,
+      "support": 4050.0
+    },
+    "weighted avg": {
+      "precision": 0.95724979576573,
+      "recall": 0.957037037037037,
+      "f1-score": 0.9569887712697535,
+      "support": 4050.0
+    }
+  }
+}
