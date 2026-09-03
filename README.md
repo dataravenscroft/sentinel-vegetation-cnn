@@ -1,8 +1,9 @@
 # Sentinel-2 Vegetation Classification with PyTorch CNNs
 
-A reproducible scientific-ML experiment classifying land-cover types from Sentinel-2 satellite imagery using convolutional neural networks. Built on the [EuroSAT benchmark dataset](https://github.com/phelber/EuroSAT), with a focus on vegetation class discrimination and ecologically-informed error analysis.
+A CNN-based land-cover classifier built on the [EuroSAT benchmark dataset](https://github.com/phelber/EuroSAT), using Sentinel-2 RGB imagery and PyTorch. This is a direct comparison to an earlier classification project I completed using traditional remote-sensing methods, a decision-tree classifier on expert-labelled Landsat imagery in northeastern Minnesota. I wanted to see what changes and what stays the same when you replace that pipeline with a convolutional network.
 
-> **Disclaimer:** EuroSAT is a benchmark dataset designed for method development and comparison. This is a portfolio/learning experiment, not novel ecological research or a production vegetation mapping system.
+> I used Claude Code to generate this codebase. I had a clear idea of what I wanted to build and compare, but I'm not going to pretend I wrote every line from scratch. What I am doing is working through it carefully — understanding each design decision, noting what warrante further exploration/analysis, and modifying it as I go. This repo is a work in progress in that sense.
+> EuroSAT is a benchmark dataset, not novel research. The point is the comparison and the analysis, not the accuracy number.
 
 ---
 
@@ -23,9 +24,9 @@ The secondary question:
 Sentinel-2 is a European Space Agency (ESA) Copernicus mission satellite carrying a MultiSpectral Instrument (MSI). It captures imagery in 13 spectral bands spanning the visible (400–700 nm), near-infrared (NIR, ~800–900 nm), and short-wave infrared (SWIR, ~1400–2400 nm) at spatial resolutions of 10–60 m. The 10 m bands — Blue (B2), Green (B3), Red (B4), and NIR (B8) — are the most commonly used for vegetation analysis.
 
 Key vegetation-relevant spectral features:
-- **Chlorophyll absorption** at ~450 nm and ~670 nm (blue and red bands) — this is why plants look green
+- **Chlorophyll absorption** at ~450 nm and ~670 nm (blue and red bands) —  plants look green
 - **Green reflectance peak** (~550 nm) — low absorption by chlorophyll
-- **Red-edge** (~700–740 nm) — abrupt transition from chlorophyll absorption to NIR plateau; one of the most diagnostic vegetation signals, captured by Sentinel-2 bands B5/B6/B7
+- **Red-edge** (~700–740 nm) — abrupt transition from chlorophyll absorption to NIR plateau; diagnostic vegetation signals, captured by Sentinel-2 bands B5/B6/B7
 - **NIR plateau** (~750–900 nm) — high reflectance from leaf cell structure scattering; strongly differentiates healthy vegetation from bare soil or water
 
 ### EuroSAT
@@ -45,7 +46,7 @@ EuroSAT (Helber et al. 2019) is a land-use / land-cover benchmark comprising **2
 | River | No | Flowing water bodies |
 | Sea / Lake | No | Open water: lakes, reservoirs, coastal sea |
 
-The RGB version (used here) corresponds to Sentinel-2 bands B4, B3, B2. A full 13-band multispectral version is available separately and is explored in the stretch-goal analysis.
+The RGB version (used here) corresponds to Sentinel-2 bands B4, B3, B2. A full 13-band multispectral version is available separately — extending to that is a natural next step.
 
 **Reference:** Helber, P., Bischke, B., Dengel, A., & Borth, D. (2019). EuroSAT: A Novel Dataset and Deep Learning Benchmark for Land Use and Land Cover Classification. *IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing.* https://doi.org/10.1109/JSTARS.2019.2918242
 
@@ -260,15 +261,15 @@ This patch-classification experiment represents one component of a full landscap
 4. **Spatial validation:** accuracy is assessed using geographically independent test regions, not random splits.
 5. **Uncertainty quantification:** prediction confidence maps identify areas requiring field validation.
 
-This approach is conceptually analogous to the forest composition classification workflow I applied to a Landsat + forest composition dataset across northeastern Minnesota, where spectral signals and spatial structure were combined to assign cover classes at landscape scale — but CNN feature extraction replaces hand-engineered spectral indices and texture metrics.
+This is also where the comparison to traditional methods becomes most relevant — the earlier Minnesota workflow applied the same general pipeline but with hand-engineered spectral indices and texture metrics in place of learned convolutional features.
 
 ---
 
-## Connection to prior work
+## Prior work
 
-This project extends a classification approach I developed earlier in my research career, in which Landsat imagery and an existing forest composition map were used to build a spectral-spatial predictive model that was then applied to assign forest cover classes across a large landscape in northeastern Minnesota. That earlier workflow relied on traditional remote-sensing classification methods: spectral indices, spatial filters, and a decision-tree classifier applied to expert-labelled training polygons.
+Earlier in my research career I worked on a classification project using Landsat imagery and an existing forest composition map to assign forest cover classes across a large landscape in northeastern Minnesota. That workflow used spectral indices, spatial filters, and a decision-tree classifier applied to expert-labelled training polygons — the standard traditional remote-sensing toolkit.
 
-The present project demonstrates the same scientific objective — extracting ecologically meaningful land-cover information from satellite imagery — using modern deep-learning methods. Together, the two projects span both traditional remote-sensing classification and CNN-based approaches to this class of problem.
+This project is the same scientific problem approached differently. Comparing the two is the point.
 
 ---
 
@@ -287,10 +288,6 @@ Split indices are saved to `results/split_indices.json` and loaded by the evalua
 
 ## Project context
 
-This is a portfolio project. The goals are:
-1. Demonstrate CNN-based classification in a scientifically meaningful domain (remote sensing / ecology)
-2. Show a structured, reproducible ML project with proper train/val/test methodology
-3. Perform ecologically-informed error analysis rather than treating this as a pure benchmark exercise
-4. Provide a direct comparison between spatial (CNN) and non-spatial (spectral mean) approaches
+The codebase was generated with Claude Code as a starting point. I'm working through it — reading the architecture, understanding the parameter choices, checking the evaluation setup, and making changes where something doesn't make sense or could be cleaner. Notes on specific decisions are scattered through the code comments and this README as I go.
 
-The finished work supports the statement: *"I have extended my remote-sensing experience using PyTorch CNNs to classify vegetation and land-cover types from Sentinel-2 imagery, including class-level evaluation and error analysis — connecting traditional spectral classification methods to modern deep-learning approaches."*
+The underlying goal is comparison: I've done this class of problem before with traditional remote-sensing tools, and I want a concrete side-by-side view of where CNNs add something and where the older approach held up fine.
