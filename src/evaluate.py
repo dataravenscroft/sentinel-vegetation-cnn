@@ -365,10 +365,13 @@ def run_baseline(
     Features: mean RGB values per patch (3 dimensions).
     Classifiers: Logistic Regression and Random Forest.
 
-    The accuracy of these models shows what a classifier can learn from
-    aggregate spectral reflectance alone, without any spatial information.
-    The CNN's improvement over this baseline quantifies the benefit of
-    learning spatial structure from convolutional feature maps.
+    The accuracy of these models establishes what a classifier can learn
+    from aggregate spectral reflectance alone, without any spatial
+    information.  Comparing these results with the CNN tests whether the
+    complete pixel grid contains useful predictive information beyond channel
+    means.  The gap reflects both the richer input representation and the
+    greater model capacity of the CNN; it cannot be attributed to spatial
+    structure alone.
     """
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.linear_model import LogisticRegression

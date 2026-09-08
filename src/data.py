@@ -85,7 +85,8 @@ def get_transforms(train: bool = True, image_size: int = 64) -> transforms.Compo
     Augmentation choices are tailored to the remote-sensing context:
     - Horizontal/vertical flips are valid: satellite imagery has no canonical
       orientation (unlike natural-scene photography).
-    - 90-degree rotation is valid for the same reason.
+    - Rotation up to ±90° is valid for the same reason (continuous uniform
+      draw from [−90°, +90°], not discrete 90° steps).
     - Colour jitter is mild to avoid distorting spectral reflectance
       relationships, which carry the primary classification signal.
     - No perspective or elastic distortions: the patches are already
@@ -243,9 +244,11 @@ def extract_mean_features(
     vector (mean R, mean G, mean B).
 
     This deliberately discards all spatial information, representing what a
-    classifier can learn from aggregate spectral reflectance alone.  The
-    improvement of the CNN over this baseline quantifies how much spatial
-    structure contributes to classification accuracy.
+    classifier can learn from aggregate spectral reflectance alone.  Comparing
+    these results with the CNN tests whether the complete pixel grid contains
+    useful predictive information beyond channel means.  Note that the
+    comparison also changes model capacity, so the performance gap cannot be
+    attributed to spatial structure alone.
 
     Returns
     -------

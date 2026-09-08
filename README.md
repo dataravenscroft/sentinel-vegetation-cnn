@@ -1,8 +1,16 @@
 # Sentinel-2 Vegetation Classification with PyTorch CNNs
 
-A reproducible scientific-ML experiment classifying land-cover types from Sentinel-2 satellite imagery using convolutional neural networks. Built on the [EuroSAT benchmark dataset](https://github.com/phelber/EuroSAT), with a focus on vegetation class discrimination and ecologically-informed error analysis.
+A CNN-based land-cover classifier built on the [EuroSAT benchmark dataset](https://github.com/phelber/EuroSAT), using Sentinel-2 RGB imagery and PyTorch. This is a comparison to an earlier classification project I completed using traditional remote-sensing methods — engineered spectral and spatial predictors, a decision-tree classifier applied to expert-labelled Landsat imagery in northeastern Minnesota. The question is what changes, and what the tradeoffs are, when you replace hand-engineered features with learned image representations.
 
-> **Disclaimer:** EuroSAT is a benchmark dataset designed for method development and comparison. This is a portfolio/learning experiment, not novel ecological research or a production vegetation mapping system.
+> Claude Code was used as a coding assistant to generate the initial codebase. I defined the scientific comparison and analysis, reviewed the implementation, ran the training and evaluation, investigated the errors, and documented where the design does and does not support the conclusions. EuroSAT is a benchmark dataset, not novel research. The 95.7% test accuracy is a benchmark result on a single random split; what the numbers establish and what they do not is discussed in the [evaluation section](#evaluation-design-validity-and-limitations) below.
+
+---
+
+## Result
+
+The SmallCNN trained from scratch on EuroSAT RGB patches reached **95.7% test accuracy and 0.956 macro F1** on a held-out 4,050-patch test partition (one run, seed 42). The mean-RGB baselines scored 60.4% / 0.595 F1 (Random Forest) and 40.5% / 0.371 F1 (Logistic Regression).
+
+The 35.3-percentage-point gap over the Random Forest shows that the complete pixel grid contains highly predictive information that is lost when each patch is reduced to three channel means. However, the comparison changes both the input representation and the model capacity simultaneously — so the gap cannot be attributed to spatial texture alone. Per-class F1 ranges from 0.920 (Permanent Crop) to 0.987 (Sea / Lake); the weakest results are concentrated among vegetation types with overlapping spectral signatures at single-date RGB resolution.
 
 ---
 
@@ -23,9 +31,9 @@ The secondary question:
 Sentinel-2 is a European Space Agency (ESA) Copernicus mission satellite carrying a MultiSpectral Instrument (MSI). It captures imagery in 13 spectral bands spanning the visible (400–700 nm), near-infrared (NIR, ~800–900 nm), and short-wave infrared (SWIR, ~1400–2400 nm) at spatial resolutions of 10–60 m. The 10 m bands — Blue (B2), Green (B3), Red (B4), and NIR (B8) — are the most commonly used for vegetation analysis.
 
 Key vegetation-relevant spectral features:
-- **Chlorophyll absorption** at ~450 nm and ~670 nm (blue and red bands) — this is why plants look green
+- **Chlorophyll absorption** at ~450 nm and ~670 nm (blue and red bands) —  plants look green
 - **Green reflectance peak** (~550 nm) — low absorption by chlorophyll
-- **Red-edge** (~700–740 nm) — abrupt transition from chlorophyll absorption to NIR plateau; one of the most diagnostic vegetation signals, captured by Sentinel-2 bands B5/B6/B7
+- **Red-edge** (~700–740 nm) — abrupt transition from chlorophyll absorption to NIR plateau; diagnostic vegetation signals, captured by Sentinel-2 bands B5/B6/B7
 - **NIR plateau** (~750–900 nm) — high reflectance from leaf cell structure scattering; strongly differentiates healthy vegetation from bare soil or water
 
 ### EuroSAT
@@ -45,23 +53,25 @@ EuroSAT (Helber et al. 2019) is a land-use / land-cover benchmark comprising **2
 | River | No | Flowing water bodies |
 | Sea / Lake | No | Open water: lakes, reservoirs, coastal sea |
 
-The RGB version (used here) corresponds to Sentinel-2 bands B4, B3, B2. A full 13-band multispectral version is available separately and is explored in the stretch-goal analysis.
+The RGB version (used here) corresponds to Sentinel-2 bands B4, B3, B2. A full 13-band multispectral version is available separately — extending to that is a natural next step.
 
 **Reference:** Helber, P., Bischke, B., Dengel, A., & Borth, D. (2019). EuroSAT: A Novel Dataset and Deep Learning Benchmark for Land Use and Land Cover Classification. *IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing.* https://doi.org/10.1109/JSTARS.2019.2918242
 
 ---
 
-## Why CNNs add value over spectral baselines
+## Image representation: full pixel grid vs. spectral summary
 
-A simple spectral classifier can use the aggregate reflectance in each band to distinguish classes. For EuroSAT RGB, this means each image is reduced to three numbers (mean R, mean G, mean B). This works well for spectrally distinctive classes — water has low, blue-dominated reflectance; bare industrial surfaces are bright and spectrally flat — but breaks down for vegetation types with similar spectral signatures.
+The mean-RGB baseline reduces each patch to three numbers — the spatial average of each channel. This discards all information about how pixel values are arranged within the patch. A CNN operating on the full pixel grid retains that arrangement and can learn filters sensitive to spatial structure.
 
-Convolutional neural networks can additionally learn **spatial texture features**:
-- Forest has a characteristically irregular, high-contrast texture from canopy gaps, individual crown shapes, and within-canopy shadow.
-- Permanent crops (orchards, vineyards) often exhibit regular row structure at 10 m resolution.
-- Annual crop fields frequently show geometric boundaries.
-- Pasture and herbaceous vegetation appear as more spatially uniform, low-texture patches.
+The comparison tests whether the complete image contains useful predictive information beyond what channel means capture — not whether spatial texture is specifically responsible for any improvement. The CNN and the spectral-mean classifiers differ in both input representation and model expressiveness, so observed performance differences reflect both factors.
 
-By learning these spatial patterns through convolutional filters, the CNN can discriminate classes that are spectrally similar but structurally distinct. The improvement of the CNN over the spectral-mean baseline quantifies how much spatial information contributes to classification accuracy.
+Spatial signals that may be available to the CNN but not to the mean-RGB baseline:
+- Forest: irregular, high-contrast texture from canopy gaps, crown shapes, and within-canopy shadow.
+- Permanent crops: regular row structure (orchards, vineyards) often visible at 10 m resolution.
+- Annual crop fields: geometric field boundaries and uniform intra-field texture.
+- Pasture / Herbaceous Vegetation: spectrally similar and spatially more uniform — the harder cases.
+
+Whether and to what degree the CNN uses these signals would require saliency analysis or controlled ablations (e.g. spatially shuffling pixels to preserve pixel-value distributions while destroying spatial arrangement).
 
 ---
 
@@ -177,8 +187,8 @@ python -m src.evaluate --checkpoint models/small_cnn_best.pt --run_baseline
 
 Augmentations are chosen to respect the remote-sensing context:
 - **Random horizontal/vertical flip** — valid because satellite imagery has no canonical orientation
-- **Random 90° rotation** — valid for the same reason
-- **Mild colour jitter** (brightness ±10%, contrast ±10%, saturation ±5%) — conservative to avoid distorting spectral reflectance relationships
+- **Random rotation up to ±90°** — valid for the same reason (continuous uniform draw from [−90°, +90°], not discrete 90° steps)
+- **Mild colour jitter** (brightness ±10%, contrast ±10%, saturation ±5%, hue ±2%) — conservative to avoid distorting spectral reflectance relationships
 
 No perspective distortion or elastic transforms are applied — the patches are geometrically rectified and spatial structure is meaningful.
 
@@ -197,7 +207,7 @@ No perspective distortion or elastic transforms are applied — the patches are 
 | SmallCNN (RGB, from scratch) | **95.7%** | **0.956** |
 | ResNet-18 (pretrained, optional) | — | — |
 
-The CNN's 35-point accuracy gain over the Random Forest baseline directly quantifies the contribution of spatial texture to classification performance. Per-class F1 ranges from 0.920 (Permanent Crop) to 0.987 (Sea / Lake), with the lowest scores concentrated among ecologically similar vegetation types.
+Per-class F1 ranges from 0.920 (Permanent Crop) to 0.987 (Sea / Lake), with the weakest scores among vegetation classes with similar spectral signatures at single-date RGB resolution. See the [Result](#result) section for interpretation of the baseline gap.
 
 ---
 
@@ -209,44 +219,71 @@ The most frequent misclassifications involve ecologically similar vegetation typ
 Both classes are dominated by non-woody, low-growing green vegetation with nearly identical RGB spectral signatures. The distinction is ecological management (grazed vs. natural/semi-natural) rather than a spectral or structural property consistently visible at 10 m resolution. This confusion is well-documented in operational vegetation mapping. Time-series phenology and NIR/red-edge data would be required to improve separation.
 
 **Annual Crop ↔ Permanent Crop / Herbaceous Vegetation**
-At a single point in the growing season, an annual crop field may be visually indistinguishable from rough grassland. The CNN exploits geometric field boundaries and regular row texture where present, but these cues are not always visible at patch scale.
+At a single point in the growing season, an annual crop field may be visually indistinguishable from rough grassland. Geometric field boundaries and regular row texture are plausible discriminating cues where visible at patch scale, but what the CNN is actually using is not established from error patterns alone.
 
 **Forest**
-Forest is among the best-classified vegetation types, reflecting both its distinctive spectral signature (lower red reflectance due to canopy shadow and chlorophyll absorption) and its characteristic high-contrast spatial texture from individual tree crowns and gaps.
+Forest is among the best-classified classes (F1: 0.984), consistent with having both a distinctive spectral signature (lower red reflectance from canopy shadow and chlorophyll absorption) and characteristically irregular spatial texture from individual tree crowns and gaps. Whether both factors contribute, and in what proportion, is not established by these results alone.
 
-**Residential ↔ HerbaceousVegetation**
-Residential patches with high tree/garden cover can superficially resemble herbaceous or even forested patches, producing asymmetric confusion in both directions.
+**Residential ↔ Herbaceous Vegetation**
+Residential patches with high tree/garden cover can superficially resemble herbaceous or even forested patches, producing confusion in both directions.
 
-The improvement of the CNN over the spectral-mean baseline is largest for classes with characteristic spatial texture (Forest, PermanentCrop, Highway, Industrial) and smallest for spectrally distinctive classes (Sea/Lake, Industrial) where mean reflectance alone is nearly sufficient.
+These error patterns motivate hypotheses about spectral similarity, spatial structure, management regimes, and phenology — but the confusion matrix alone does not prove what the CNN learned. Saliency analysis and controlled ablations would be needed to test those hypotheses.
 
 ---
 
-## Validation strategy and limitations
+## Evaluation design, validity, and limitations
 
-### Why random splitting may overestimate performance
+### What this evaluation establishes
 
-The random image-level split used for benchmark evaluation assigns each patch independently to train, val, or test. This is appropriate for comparing methods, but for a **production vegetation mapping application**, it likely **overestimates** generalisation performance:
+- **Fixed partitions:** a single 70 / 15 / 15 train / validation / test split, generated with seed 42 and saved to `results/split_indices.json`. The same partitions are used by all scripts.
+- **Checkpoint selection on validation accuracy:** the saved model is the best-performing checkpoint on the validation set, not selected on test performance.
+- **Test-set metrics:** accuracy and macro F1 on a 4,050-patch held-out test partition, with per-class precision, recall, and F1.
+- **Error analysis:** confusion matrix and example patches for the most frequent misclassification pairs.
+- **Logged artefacts:** split indices, per-epoch training history, full hyperparameters (stored in the checkpoint), and test metrics are all saved to `results/`.
 
-1. **Spatial autocorrelation.** Nearby patches share soil type, climate, topography, and atmospheric state at acquisition. Patches from the same geographic neighbourhood appear in both training and test sets, violating the independence assumption.
+### What this evaluation does not establish
 
-2. **Tile-level consistency.** Patches from the same Sentinel-2 tile are processed with the same calibration and atmospheric correction. Random splitting distributes patches from the same tile across train and test.
+- **Geographic transfer.** The test set is drawn from the same random partition as training data. There is no guarantee of geographic independence between train and test patches.
+- **Independence from spatial autocorrelation.** Nearby patches share soil type, climate, topography, and atmospheric conditions. Random image-level splitting places geographic neighbours in both train and test, which can inflate measured accuracy relative to a genuinely unseen region.
+- **Tile-level independence.** Patches from the same Sentinel-2 tile share calibration and atmospheric correction; random splitting distributes them across train and test.
+- **Seed stability.** Only one training run was recorded. Results may vary across random seeds; no uncertainty intervals or calibration metrics are reported.
+- **Temporal or ecological distribution shift.** The dataset is single-date and drawn from a curated European domain.
+- **Production landscape-mapping performance.** Patch classification does not address tiled inference, mixed pixels, class boundaries, cloud cover, or domain shift to a new landscape.
 
-3. **Distribution shift.** The vegetation composition of a novel region may differ systematically from the training distribution even within EuroSAT's European coverage.
+The 95.7% accuracy should be read as a benchmark result on this dataset and split — not as evidence of geographic generalisation.
 
-### Stronger validation approaches for landscape-scale application
+### Stronger validation approaches
 
-- **Spatially blocked cross-validation:** assign patches to geographic blocks (grid cells, watersheds, administrative regions) and evaluate using leave-one-block-out. This prevents spatial neighbours from appearing in both train and test.
+- **Spatially blocked cross-validation:** assign patches to geographic blocks (grid cells, watersheds, administrative regions) and evaluate using leave-one-block-out.
 - **Leave-region-out:** hold out an entire country, ecoregion, or Sentinel-2 tile as the test set.
-- **Temporal validation:** train on one acquisition date, test on another to assess robustness to inter-annual phenological variation.
+- **Repeated seeds:** run training multiple times and report mean and variance of test metrics.
+- **Temporal validation:** train on one acquisition date, test on another to assess phenological robustness.
 
-EuroSAT does not provide patch coordinates, so spatial blocking cannot be directly implemented without geolocating patches from the source data.
+EuroSAT does not include patch coordinates, so spatial blocking cannot be applied directly without geolocating patches from the source data.
 
-### Other limitations
+### Limitations
 
-- **RGB only.** The NIR and red-edge bands that carry the strongest vegetation discrimination signal are unavailable in the RGB variant.
-- **Single date.** Crop phenology and seasonal greenness patterns, which are powerful temporal discriminators, are not captured.
-- **Patch scale.** Real landscape mapping involves edge effects, spatial context, and class transitions beyond a single 64×64 patch.
-- **European training domain.** Generalisation outside Europe is untested.
+- **Mean RGB is an intentionally lossy baseline**, not a competitive conventional remote-sensing pipeline. Colour histograms, texture descriptors, and engineered spectral / spatial features would be stronger conventional comparators.
+- **The baseline comparison conflates two factors:** input representation (mean vs. full pixel grid) and model capacity (linear / tree vs. CNN). The performance gap cannot be attributed to either factor alone.
+- **RGB only.** NIR and red-edge bands carry the strongest vegetation discrimination signal and are absent from this experiment.
+- **Single date.** Crop phenology and seasonal greenness — powerful temporal discriminators — are not captured.
+- **Patch scale.** Landscape mapping involves edge effects, mixed pixels, class transitions, and spatial context beyond a single 64 × 64 patch.
+- **Curated European domain.** EuroSAT covers 34 European countries with human-verified labels; generalisation outside this domain is untested.
+- **One training run.** Without repeated seeds or confidence intervals, the reported metrics carry unknown variance.
+
+---
+
+## What I would do next
+
+The main limitation is evaluation design, not model architecture. A different architecture or further accuracy-tuning would not address the core issues.
+
+1. **Spatially blocked validation.** Reconstruct or adopt a georeferenced version of EuroSAT and perform grouped, spatially blocked, or leave-region-out cross-validation to get a less optimistic accuracy estimate.
+2. **Stronger conventional baselines.** Add colour histograms, texture descriptors (GLCM, LBP), and engineered spectral / spatial indices. Mean RGB is a useful floor but not a competitive remote-sensing baseline.
+3. **Controlled ablations.** Train and test on spatially shuffled patches — pixels permuted randomly within each patch, destroying spatial arrangement while preserving pixel-value distributions. Comparing shuffled vs. unshuffled performance would quantify the contribution of pixel arrangement independently of model capacity differences.
+4. **Repeated seeds and calibration.** Run training across multiple random seeds and report mean, standard deviation, and calibration of test metrics.
+5. **Spectral bands.** Compare RGB against NIR, red-edge, and the full 13-band Sentinel-2 stack to quantify what is lost by restricting to visible wavelengths.
+6. **Multi-date imagery.** Test whether a second acquisition date improves separation of phenologically similar classes (Annual Crop, Pasture, Herbaceous Vegetation).
+7. **Tiled landscape inference.** Apply the classifier to a geographically independent landscape using a sliding window, assess accuracy against independent reference data, and characterise errors at patch boundaries and in mixed-cover areas.
 
 ---
 
@@ -260,37 +297,31 @@ This patch-classification experiment represents one component of a full landscap
 4. **Spatial validation:** accuracy is assessed using geographically independent test regions, not random splits.
 5. **Uncertainty quantification:** prediction confidence maps identify areas requiring field validation.
 
-This approach is conceptually analogous to the forest composition classification workflow I applied to a Landsat + forest composition dataset across northeastern Minnesota, where spectral signals and spatial structure were combined to assign cover classes at landscape scale — but CNN feature extraction replaces hand-engineered spectral indices and texture metrics.
+This is also where the comparison to traditional methods becomes most relevant — the earlier Minnesota workflow applied the same general pipeline but with hand-engineered spectral indices and texture metrics in place of learned convolutional features.
 
 ---
 
-## Connection to prior work
+## Prior work
 
-This project extends a classification approach I developed earlier in my research career, in which Landsat imagery and an existing forest composition map were used to build a spectral-spatial predictive model that was then applied to assign forest cover classes across a large landscape in northeastern Minnesota. That earlier workflow relied on traditional remote-sensing classification methods: spectral indices, spatial filters, and a decision-tree classifier applied to expert-labelled training polygons.
+Earlier in my research career I worked on a classification project using Landsat imagery and an existing forest composition map to assign forest cover classes across a large landscape in northeastern Minnesota. That workflow used spectral indices, spatial filters, and a decision-tree classifier applied to expert-labelled training polygons — the standard traditional remote-sensing toolkit.
 
-The present project demonstrates the same scientific objective — extracting ecologically meaningful land-cover information from satellite imagery — using modern deep-learning methods. Together, the two projects span both traditional remote-sensing classification and CNN-based approaches to this class of problem.
+This project is the same scientific problem approached differently. Comparing the two is the point.
 
 ---
 
 ## Reproducibility
 
-The training seed, data splits, and all hyperparameters are set deterministically and logged to `results/`. To reproduce exactly:
+The random seed, data splits, and hyperparameters are fixed and logged to `results/`. Data partitions are saved to `results/split_indices.json` and loaded by the evaluation script, so train and test sets are consistent across runs. Note that GPU operations can be non-deterministic even with a fixed seed; exact numeric reproducibility is not guaranteed across different hardware or library versions.
 
 ```bash
 python -m src.train --seed 42
 python -m src.evaluate --run_baseline
 ```
 
-Split indices are saved to `results/split_indices.json` and loaded by the evaluation script, ensuring train and test partitions are identical across runs.
-
 ---
 
 ## Project context
 
-This is a portfolio project. The goals are:
-1. Demonstrate CNN-based classification in a scientifically meaningful domain (remote sensing / ecology)
-2. Show a structured, reproducible ML project with proper train/val/test methodology
-3. Perform ecologically-informed error analysis rather than treating this as a pure benchmark exercise
-4. Provide a direct comparison between spatial (CNN) and non-spatial (spectral mean) approaches
+Claude Code was used to generate the initial codebase. I defined the scientific comparison — what to build, what to measure, and how to interpret it — reviewed the implementation, ran training and evaluation, and worked through the error analysis and limitations. The README and code comments reflect that review process and are updated as I go.
 
-The finished work supports the statement: *"I have extended my remote-sensing experience using PyTorch CNNs to classify vegetation and land-cover types from Sentinel-2 imagery, including class-level evaluation and error analysis — connecting traditional spectral classification methods to modern deep-learning approaches."*
+The underlying goal is to have a working CNN pipeline I can compare directly against my earlier traditional-methods project — not to achieve a state-of-the-art benchmark result.
